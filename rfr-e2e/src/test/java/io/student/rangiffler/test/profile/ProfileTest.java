@@ -9,6 +9,7 @@ import io.student.rangiffler.ui.page.ProfilePage;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +42,8 @@ class ProfileTest {
   @Test
   @DisplayName("Аватар сохраняется после перезагрузки")
   void avatarIsPersisted(Page page, @User TestUser user) throws Exception {
-    Path avatar = Path.of(ProfileTest.class.getResource("/images/avatar.png").toURI());
+    Path avatar = Path.of(Objects.requireNonNull(
+        ProfileTest.class.getResource("/images/avatar.png"), "Missing test resource: /images/avatar.png").toURI());
     String expectedDataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(Files.readAllBytes(avatar));
     loginToProfile(page, user).uploadAvatar(avatar).clickSave().reload()
         .checkThatAvatar(expectedDataUrl);
@@ -50,8 +52,10 @@ class ProfileTest {
   @Test
   @DisplayName("Reset возвращает сохранённые имя, фамилию, страну и аватар")
   void resetRestoresSavedValues(Page page, @User TestUser user) throws Exception {
-    Path avatar = Path.of(ProfileTest.class.getResource("/images/avatar.png").toURI());
-    Path replacement = Path.of(ProfileTest.class.getResource("/images/replacement.png").toURI());
+    Path avatar = Path.of(Objects.requireNonNull(
+        ProfileTest.class.getResource("/images/avatar.png"), "Missing test resource: /images/avatar.png").toURI());
+    Path replacement = Path.of(Objects.requireNonNull(
+        ProfileTest.class.getResource("/images/replacement.png"), "Missing test resource: /images/replacement.png").toURI());
     String expectedDataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(Files.readAllBytes(avatar));
     loginToProfile(page, user)
         .fillFirstName("Katy").fillSurname("Chudova").selectLocation("France").uploadAvatar(avatar)

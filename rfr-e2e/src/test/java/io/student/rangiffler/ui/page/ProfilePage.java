@@ -72,10 +72,13 @@ public final class ProfilePage {
 
   @Step("Сохранить профиль")
   public ProfilePage clickSave() {
-    page.waitForResponse(response -> response.url().endsWith("/graphql")
-        && "POST".equals(response.request().method())
-        && response.request().postData() != null
-        && response.request().postData().contains("\"operationName\":\"UpdateUser\""), save::click);
+    page.waitForResponse(response -> {
+      String postData = response.request().postData();
+      return response.url().endsWith("/graphql")
+          && "POST".equals(response.request().method())
+          && postData != null
+          && postData.contains("\"operationName\":\"UpdateUser\"");
+    }, save::click);
     return this;
   }
 
