@@ -40,8 +40,14 @@ class ProfileTest {
   }
 
   @Test
-  @DisplayName("Аватар сохраняется после перезагрузки")
+  @DisplayName("Аватар сохраняется после перезагрузки при отложенном чтении файла")
   void avatarIsPersisted(Page page, @User TestUser user) throws Exception {
+    page.addInitScript("""
+        const readAsDataURL = FileReader.prototype.readAsDataURL;
+        FileReader.prototype.readAsDataURL = function(file) {
+          setTimeout(() => readAsDataURL.call(this, file), 1000);
+        };
+        """);
     Path avatar = Path.of(Objects.requireNonNull(
         ProfileTest.class.getResource("/images/avatar.png"), "Missing test resource: /images/avatar.png").toURI());
     String expectedDataUrl = "data:image/png;base64," + Base64.getEncoder().encodeToString(Files.readAllBytes(avatar));

@@ -3,8 +3,13 @@ package io.student.rangiffler.ui.page;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
+import io.qameta.allure.Param;
 import io.qameta.allure.Step;
+import io.qameta.allure.model.Parameter;
 import io.student.rangiffler.config.TestConfig;
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
@@ -65,8 +70,11 @@ public final class ProfilePage {
   }
 
   @Step("Загрузить аватар из файла: {path}")
-  public ProfilePage uploadAvatar(Path path) {
+  public ProfilePage uploadAvatar(Path path) throws IOException {
+    String expectedDataUrl = "data:" + Files.probeContentType(path) + ";base64,"
+        + Base64.getEncoder().encodeToString(Files.readAllBytes(path));
     avatarInput.setInputFiles(path);
+    page.waitForCondition(() -> expectedDataUrl.equals(avatar.getAttribute("src")));
     return this;
   }
 
@@ -106,8 +114,8 @@ public final class ProfilePage {
     return this;
   }
 
-  @Step("Проверить сохранённый аватар: {expectedDataUrl}")
-  public ProfilePage checkThatAvatar(String expectedDataUrl) {
+  @Step("Проверить сохранённый аватар")
+  public ProfilePage checkThatAvatar(@Param(mode = Parameter.Mode.HIDDEN) String expectedDataUrl) {
     assertThat(avatar).hasAttribute("src", expectedDataUrl);
     return this;
   }
