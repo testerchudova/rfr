@@ -182,7 +182,7 @@ mutation CreatePhoto($input: PhotoInput!) {
 
 ## Ошибки
 
-HTTP-статус GraphQL-ответа - 200 и при ошибке; проверяйте `errors`. `GraphQlExceptionResolver` переводит исключения:
+Ошибки выполнения GraphQL могут возвращаться с HTTP 200; проверяйте `errors`. Ошибки HTTP-фильтров, например невалидный Bearer-токен, могут вернуть 401 до GraphQL. `GraphQlExceptionResolver` переводит исключения:
 
 | Исключение | `extensions.classification` | Пример `message` |
 |---|---|---|
@@ -202,7 +202,7 @@ HTTP-статус GraphQL-ответа - 200 и при ошибке; прове�
   в `RangifflerApiConfiguration`).
 - Username текущего пользователя - claim `sub` (`@AuthenticationPrincipal Jwt`).
 - Невалидный или просроченный Bearer-токен - HTTP 401 от фильтра, до GraphQL.
-- GraphiQL (`/graphiql`) включен, но `GET` на него требует аутентификации - см. раздел Security config в корневом README.
+- GraphiQL (`/graphiql`) включен, но `GET` на него требует аутентификации в `RangifflerApiConfiguration`; запрос без токена получает HTTP 401.
 
 ## База данных
 
@@ -224,13 +224,13 @@ UUID пользователя в `rangiffler-api` и `rangiffler-auth` неза�
 
 ```bash
 # из корня проекта: MySQL в Docker
-# внимание: localenv.sh останавливает и удаляет ВСЕ docker-контейнеры на машине
-bash localenv.sh
+docker compose up -d --wait --wait-timeout 180
 
-cd rfr-api
-../gradlew bootRun
+./gradlew :rfr-api:bootRun
 # или main class io.student.rangiffler.RangifflerApiApplication из IDE
 ```
+
+`bash localenv.sh` эквивалентно запуску MySQL через Compose с ожиданием готовности. Скрипт не удаляет другие контейнеры. Общий запуск обоих бэкендов — `./gradlew runAll`; в PowerShell используйте `.\gradlew.bat`. Переход со старого контейнера с сохранением `mysql-volume` описан в корневом README.
 
 Проверка (access token можно взять в localStorage фронтенда после логина, ключ `access_token`):
 

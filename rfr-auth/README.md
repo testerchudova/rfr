@@ -189,13 +189,13 @@ OAuth-авторизации, consent и ключи в БД не хранятс�
 
 ```bash
 # из корня проекта: MySQL в Docker
-# внимание: localenv.sh останавливает и удаляет ВСЕ docker-контейнеры на машине
-bash localenv.sh
+docker compose up -d --wait --wait-timeout 180
 
-cd rfr-auth
-../gradlew bootRun
+./gradlew :rfr-auth:bootRun
 # или main class io.student.rangiffler.RangifflerAuthApplication из IDE
 ```
+
+`bash localenv.sh` запускает только MySQL через Compose с ожиданием готовности; другие контейнеры не удаляются. Для обоих бэкендов используйте `./gradlew runAll`; в PowerShell — `.\gradlew.bat`. Данные MySQL сохраняются в именованном томе `mysql-volume`.
 
 Проверка:
 
