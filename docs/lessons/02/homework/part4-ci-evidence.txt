@@ -1,0 +1,53 @@
+ДЗ №02, часть 4 — E2E в CI
+Дата: 2026-11-17
+Ветка: hw/02-env-agent
+
+Подготовлен job e2e в .github/workflows/ci.yml:
+- фильтры изменений используют outputs job changes;
+- MySQL 8.4.7 запускается через services с healthcheck;
+- Java 25, Node.js 22, npm ci;
+- новая задача :rfr-e2e:installPlaywrightWithDeps вызывает
+  Playwright CLI: install --with-deps chromium;
+- runAll и Vite запускаются в фоне с отдельными логами;
+- ожидание портов 9001, 8081 и 3001 ограничено 180 секундами;
+- ./gradlew e2e запускает браузерные тесты;
+- результаты Allure, JUnit и логи загружаются через if: always();
+- Summary содержит время запуска приложения и время тестов.
+
+Локальные проверки
+1. actionlint 1.7.12: exit 0. Проверены workflow и выражения GitHub Actions.
+   Архив инструмента взят из официального релиза и проверен по SHA-256.
+2. bash -n: синтаксис всех 9 run-шагов принят.
+3. node --test scripts/ci/wait-for-ports.test.mjs:
+   tests 4, pass 4, fail 0, skipped 0.
+   Проверены готовые порты, отложенный запуск, таймаут одного из портов
+   и неверные аргументы.
+4. .\gradlew.bat :rfr-e2e:installPlaywrightWithDeps --dry-run:
+   BUILD SUCCESSFUL. Это проверка задачи на Windows;
+   установка библиотек Ubuntu будет выполнена самим CI.
+5. node scripts/ci/wait-for-ports.mjs 9001 8081 3001:
+   все три порта локального стенда готовы, exit 0.
+6. .\gradlew.bat --console=plain e2e после исправления входа:
+   BUILD SUCCESSFUL in 2m 24s, exit 0.
+   Из XML JUnit: tests 9, failures 0, errors 0, skipped 0.
+   Девять свежих результатов Allure: passed.
+   Длительность локальной команды: 145.2 секунды.
+
+Исправление, найденное при проверке
+Первый полный прогон получил 1 падение в MainPageTest. В отдельном запуске
+журнал Playwright показал: clickSignIn() заканчивался на /authorized,
+а проверка главной страницы начиналась до перехода на /my-travels.
+В LoginPage.clickSignIn добавлено ожидание конечного URL. После изменения
+весь набор прошёл. Учётные данные и параметры OAuth в этот файл не включены.
+
+Статус GitHub Actions
+Новый job на GitHub пока не запускался: изменения ещё не опубликованы в PR.
+Локальный прогон не заменяет обязательный зелёный прогон job e2e в PR.
+После публикации нужно добавить ссылку на успешный run, полную длительность
+job из GitHub Actions и время старта приложения из Summary.
+Локальные 145.2 секунды не являются замером CI.
+
+Сырые локальные результаты находятся в исключённой из Git папке
+build/hw02-evidence: part4-actionlint.log, part4-readiness-tests.log,
+part4-playwright-task.log, part4-local-readiness.log,
+part4-e2e-after-fix.log и part4-local-summary.json.

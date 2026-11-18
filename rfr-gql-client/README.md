@@ -140,11 +140,13 @@ Dev-сервер слушает `VITE_FRONT_HOST:3001` (`vite.config.ts`). По�
 
 ```bash
 cd rfr-gql-client
-npm ci          # или npm install
+npm ci          # воспроизводимая установка по package-lock.json
 npm run dev     # http://localhost:3001
 ```
 
 Для работы нужны запущенные `rfr-auth` (9001) и `rfr-api` (8081).
+
+Из корня проекта их запускает `./gradlew runAll` (в PowerShell `.\gradlew.bat runAll`) после `docker compose up -d --wait --wait-timeout 180`. Эта команда Gradle не запускает фронтенд: `npm run dev` остаётся в отдельном терминале. Проектные инструкции Codex находятся в [AGENTS.md](AGENTS.md).
 
 Сборка и проверки:
 
