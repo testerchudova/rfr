@@ -5,7 +5,11 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 import io.qameta.allure.Step;
 import io.student.rangiffler.config.TestConfig;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.regex.Pattern;
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
@@ -70,7 +74,12 @@ public final class ProfilePage {
 
   @Step("Загрузить аватар {file}")
   public ProfilePage uploadAvatar(Path file) {
+    String expectedPayload = avatarPayload(file);
     avatarInput.setInputFiles(file);
+    page.waitForCondition(() -> {
+      String source = avatar.getAttribute("src");
+      return source != null && source.startsWith("data:image/") && source.endsWith("," + expectedPayload);
+    });
     return this;
   }
 
@@ -117,6 +126,14 @@ public final class ProfilePage {
   public ProfilePage checkThatAvatarUploaded() {
     assertThat(avatar).hasAttribute("src", Pattern.compile("^data:image/"));
     return this;
+  }
+
+  private String avatarPayload(Path file) {
+    try {
+      return Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+    } catch (IOException failure) {
+      throw new UncheckedIOException("Cannot read avatar file " + file, failure);
+    }
   }
 
   @Step("Найти страну {countryName} в списке по флагу")
