@@ -48,13 +48,19 @@ public final class PeoplePage {
 
   @Step("Открыть вкладку Outcome invitations")
   public PeoplePage clickOutcomeInvitations() {
-    outcomeInvitations.click();
+    page.waitForResponse(
+        response -> response.url().endsWith("/graphql")
+            && String.valueOf(response.request().postData()).contains("GetOutcomeInvitations"),
+        outcomeInvitations::click).finished();
     return this;
   }
 
   @Step("Открыть вкладку Income invitations")
   public PeoplePage clickIncomeInvitations() {
-    incomeInvitations.click();
+    page.waitForResponse(
+        response -> response.url().endsWith("/graphql")
+            && String.valueOf(response.request().postData()).contains("GetInvitations"),
+        incomeInvitations::click).finished();
     return this;
   }
 
