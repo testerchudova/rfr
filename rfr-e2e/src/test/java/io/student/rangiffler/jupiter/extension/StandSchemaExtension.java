@@ -10,6 +10,11 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public final class StandSchemaExtension implements SuiteExtension {
   @Override
+  public boolean supports(ExtensionContext context) {
+    return context.getTags().contains("ui") && TestConfig.migrationCheck();
+  }
+
+  @Override
   public void beforeSuite(ExtensionContext context) {
     if (TestConfig.migrationCheck()) {
       List<String> mismatches = Stream.of(
@@ -22,8 +27,7 @@ public final class StandSchemaExtension implements SuiteExtension {
         throw new IllegalStateException(
             "Local database schema does not match the backend migrations of the current branch, "
                 + "restart the backends with './gradlew runAll' so Flyway applies pending migrations, "
-                + "and if the mismatch remains recreate the database with "
-                + "'docker compose down -v && docker compose up -d --wait' and restart the backends again"
+                + "and check the branch and migration history if the mismatch remains; preserve the database volume"
                 + System.lineSeparator()
                 + String.join(System.lineSeparator(), mismatches));
       }
