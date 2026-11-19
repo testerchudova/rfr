@@ -21,7 +21,7 @@ public final class UserExtension implements BeforeEachCallback, ParameterResolve
     for (int index = 0; index < parameters.length; index++) {
       User user = parameters[index].getAnnotation(User.class);
       if (user != null) {
-        UserFixture fixture = new UserRequest(user.friends(), user.incomeInvitations()).fixture();
+        UserFixture fixture = new UserRequest(user.friends(), user.incomeInvitations(), user.outcomeInvitations()).fixture();
         context.getStore(NAMESPACE).put(key(index), fixture);
         fixture.create();
       }

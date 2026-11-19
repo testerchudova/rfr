@@ -55,7 +55,10 @@ public final class MainPage {
 
   @Step("Открыть People")
   public PeoplePage clickPeople() {
-    people.click();
+    page.waitForResponse(
+        response -> response.url().endsWith("/graphql")
+            && String.valueOf(response.request().postData()).contains("GetFriends"),
+        people::click).finished();
     return new PeoplePage(page);
   }
 }
