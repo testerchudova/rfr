@@ -32,6 +32,7 @@ public final class LoginPage {
   @Step("Нажать Sign in")
   public MainPage clickSignIn() {
     signIn.click();
+    page.waitForURL(MainPage.URL);
     return new MainPage(page);
   }
 

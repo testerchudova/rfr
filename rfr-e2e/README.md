@@ -8,13 +8,15 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 ./gradlew :rfr-e2e:installPlaywright                      # один раз: браузер Chromium
 ./gradlew e2e                                             # все UI-тесты (тег ui)
 ./gradlew :rfr-e2e:e2e --tests '*MainPageTest'            # один тест
-./gradlew :rfr-e2e:test                                   # всё без тега ui, стенд не нужен; с --tests тег ui не отсекается (запуск из IDE)
+./gradlew :rfr-e2e:test                                   # без тега ui; DB-пробам нужна MySQL, браузер и серверы не нужны; с --tests тег ui не отсекается
 ./gradlew :rfr-e2e:allureReport                           # rfr-e2e/build/reports/allure-report/allureReport/index.html
 ```
 
 Стенд: MySQL `:3306`, `rfr-auth :9001`, `rfr-api :8081`, фронт `:3001` (см. корневой README).
 
-Тесты, которым нужен браузер и стенд, помечены `@Tag("ui")` и запускаются задачей `e2e`. Задача `test` исключает тег `ui` и обходится без стенда. Обе задачи запускают тесты при каждом вызове, `--rerun-tasks` не нужен. Перед тестами `e2e` вызывает `waitForStand` (`scripts/wait-for-stand.sh`): он ждёт MySQL, `rfr-auth`, `rfr-api` и фронт не дольше `WAIT_TIMEOUT` секунд (по умолчанию 180).
+В PowerShell используйте `./gradlew.bat`. Если `bash` разрешается в WSL без Linux, задайте установленный Git Bash: `'-PbashExecutable=C:/Program Files/Git/bin/bash.exe'`.
+
+Тесты, которым нужен браузер и стенд, помечены `@Tag("ui")` и запускаются задачей `e2e`. Задача `test` исключает тег `ui`: DB-пробы используют MySQL, но не требуют браузер, auth/API или фронт. Обе задачи запускают тесты при каждом вызове, `--rerun-tasks` не нужен. Перед тестами `e2e` вызывает `waitForStand` (`scripts/wait-for-stand.sh`): он ждёт MySQL, `rfr-auth`, `rfr-api` и фронт не дольше `WAIT_TIMEOUT` секунд (по умолчанию 180).
 
 ## Конфигурация
 

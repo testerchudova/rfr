@@ -1,6 +1,9 @@
 package io.student.rangiffler.jupiter.probe;
 
 import io.student.rangiffler.data.TestUser;
+import io.student.rangiffler.data.SingleUserFixture;
+import io.student.rangiffler.data.UserFixture;
+import io.student.rangiffler.data.UserWithOutcomeInvitationsFixture;
 import io.student.rangiffler.data.db.ApiProfile;
 import io.student.rangiffler.data.db.AuthAccount;
 import io.student.rangiffler.data.db.Friendship;
@@ -10,6 +13,7 @@ import io.student.rangiffler.jupiter.annotation.User;
 import io.student.rangiffler.jupiter.condition.ProbeTargetCondition;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -24,11 +28,78 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
 @Tag("engine-probe")
 @DisplayName("UserExtension")
 class UserExtensionTest {
+  @Test
+  @DisplayName("После падения теста удаляются обе стороны исходящего приглашения")
+  void failedOutcomeInvitationIsRemoved() {
+    Map<String, String> entries = runAndReturnEntries(FailingOutcomeInvitation.class);
+    for (String username : new String[]{entries.get("username"), entries.get("invitee")}) {
+      assertFalse(new ApiProfile(username).exists());
+      assertFalse(new AuthAccount(username, "unused").exists());
+    }
+    assertFalse(new Friendship(entries.get("username"), entries.get("invitee"), FriendshipStatus.PENDING).exists());
+  }
+
+  @Test
+  @DisplayName("При ошибке создания связи удаляется уже созданный приглашённый")
+  void partialOutcomePreparationIsRemoved() {
+    TestUser user = TestUser.unique();
+    SingleUserFixture single = new SingleUserFixture(user);
+    UserFixture missingProfile = new UserFixture() {
+      @Override
+      public TestUser user() {
+        return single.user();
+      }
+
+      @Override
+      public void create() {
+        single.create();
+        new ApiProfile(user.username()).delete();
+      }
+
+      @Override
+      public void close() {
+        single.close();
+      }
+    };
+    String invitee;
+    try (UserFixture fixture = new UserWithOutcomeInvitationsFixture(missingProfile, 1)) {
+      assertThrows(IllegalStateException.class, fixture::create);
+      invitee = fixture.user().outcomeInvitations().getFirst().username();
+      assertTrue(new ApiProfile(invitee).exists(), "The invitee must exist before the failing friendship step");
+    }
+    for (String username : new String[]{user.username(), invitee}) {
+      assertFalse(new ApiProfile(username).exists());
+      assertFalse(new AuthAccount(username, "unused").exists());
+    }
+  }
+
+  @Test
+  @DisplayName("Исходящее приглашение создаётся от основного пользователя и полностью удаляется")
+  void outcomeInvitationHasCorrectDirectionAndIsRemoved() {
+    Map<String, String> entries = runAndReturnEntries(OutcomeInvitation.class);
+    assertEquals("true", entries.get("invitation"));
+    assertEquals("false", entries.get("reversed"));
+    assertFalse(new Friendship(entries.get("username"), entries.get("invitee"), FriendshipStatus.PENDING).exists());
+    assertFalse(new ApiProfile(entries.get("invitee")).exists());
+    assertFalse(new AuthAccount(entries.get("invitee"), "unused").exists());
+    assertFalse(new ApiProfile(entries.get("username")).exists());
+  }
+
+  @Test
+  @DisplayName("Отрицательное число исходящих приглашений отклоняется до создания пользователя")
+  void negativeOutcomeInvitationsFailBeforeCreation() {
+    Throwable failure = failure(NegativeOutcomeInvitations.class);
+    assertInstanceOf(IllegalArgumentException.class, failure);
+    assertTrue(failure.getMessage().contains("Outcome invitations count must be non-negative"));
+  }
+
   @Test
   @DisplayName("Тест с @User проходит")
   void testWithUserSucceeds() {
@@ -136,35 +207,6 @@ class UserExtensionTest {
         "@User in @BeforeEach parameter was resolved");
   }
 
-  @Test
-  @DisplayName("Во время теста исходящая заявка связана со статусом PENDING")
-  void outcomeInvitationIsPendingDuringTest() {
-    assertEquals("true", runAndReturnEntries(OutcomeInvitation.class).get("invitation"),
-        "Pending outcome invitation did not exist during the test");
-  }
-
-  @Test
-  @DisplayName("После теста исходящей заявки нет в api")
-  void outcomeInvitationIsRemovedAfterTest() {
-    Map<String, String> entries = runAndReturnEntries(OutcomeInvitation.class);
-    assertFalse(new Friendship(entries.get("username"), entries.get("invitee"), FriendshipStatus.PENDING).exists(),
-        "Outcome invitation was not removed after the test");
-  }
-
-  @Test
-  @DisplayName("После теста профиля приглашённого нет в api")
-  void inviteeProfileIsRemovedAfterTest() {
-    assertFalse(new ApiProfile(runAndReturnEntries(OutcomeInvitation.class).get("invitee")).exists(),
-        "Invitee profile was not removed after the test");
-  }
-
-  @Test
-  @DisplayName("Отрицательное число исходящих заявок валит тест до создания пользователя")
-  void negativeOutcomeInvitationsFailTest() {
-    assertInstanceOf(IllegalArgumentException.class, failure(NegativeOutcomeInvitations.class),
-        "Negative outcome invitations count did not fail the test with IllegalArgumentException");
-  }
-
   private EngineExecutionResults run(Class<?> target) {
     return EngineTestKit.engine("junit-jupiter")
         .configurationParameter(ProbeTargetCondition.PARAMETER, "true")
@@ -173,10 +215,34 @@ class UserExtensionTest {
   }
 
   private Map<String, String> runAndReturnEntries(Class<?> target) {
+    EngineExecutionResults results = run(target);
+    results.testEvents().assertStatistics(stats -> {
+      stats.started(1);
+      if (target == Failing.class || target == FailingOutcomeInvitation.class) {
+        stats.failed(1);
+      } else {
+        stats.succeeded(1);
+      }
+    });
+    if (target == Failing.class || target == FailingOutcomeInvitation.class) {
+      Throwable failure = results.testEvents().failed().stream()
+          .map(event -> event.getRequiredPayload(TestExecutionResult.class))
+          .flatMap(result -> result.getThrowable().stream())
+          .findFirst().orElseThrow();
+      assertInstanceOf(IllegalStateException.class, failure);
+      assertEquals(target == Failing.class ? "Probe target fails on purpose"
+          : "Outcome invitation probe fails on purpose", failure.getMessage());
+    }
     Map<String, String> entries = new HashMap<>();
-    run(target).allEvents().reportingEntryPublished().stream()
+    results.allEvents().reportingEntryPublished().stream()
         .map(event -> event.getRequiredPayload(ReportEntry.class))
         .forEach(entry -> entries.putAll(entry.getKeyValuePairs()));
+    Set<String> required = target == Observed.class ? Set.of("username", "password", "friend", "inviter")
+        : target == TwoUsers.class ? Set.of("first", "second")
+        : target == FailingOutcomeInvitation.class || target == OutcomeInvitation.class
+            ? Set.of("username", "invitee") : Set.of("username");
+    required.forEach(key -> assertTrue(entries.containsKey(key) && !entries.get(key).isBlank(),
+        "Probe must publish non-empty " + key + " before cleanup checks"));
     return entries;
   }
 
@@ -186,6 +252,40 @@ class UserExtensionTest {
         .flatMap(result -> result.getThrowable().stream())
         .findFirst()
         .orElseThrow(() -> new IllegalStateException("Probe target " + target.getSimpleName() + " did not fail"));
+  }
+
+  @ProbeTarget
+  static final class FailingOutcomeInvitation {
+    @Test
+    void fail(TestReporter reporter, @User(outcomeInvitations = 1) TestUser user) {
+      reporter.publishEntry(Map.of("username", user.username(),
+          "invitee", user.outcomeInvitations().getFirst().username()));
+      throw new IllegalStateException("Outcome invitation probe fails on purpose");
+    }
+  }
+
+  @ProbeTarget
+  static final class OutcomeInvitation {
+    @Test
+    void observe(TestReporter reporter, @User(outcomeInvitations = 1) TestUser user) {
+      assertEquals(1, user.outcomeInvitations().size());
+      TestUser invitee = user.outcomeInvitations().getFirst();
+      reporter.publishEntry(Map.of(
+          "username", user.username(),
+          "invitee", invitee.username(),
+          "invitation", String.valueOf(
+              new Friendship(user.username(), invitee.username(), FriendshipStatus.PENDING).exists()),
+          "reversed", String.valueOf(
+              new Friendship(invitee.username(), user.username(), FriendshipStatus.PENDING).exists())));
+    }
+  }
+
+  @ProbeTarget
+  static final class NegativeOutcomeInvitations {
+    @Test
+    void observe(@User(outcomeInvitations = -1) TestUser user) {
+      throw new IllegalStateException("Invalid request must not reach the test body");
+    }
   }
 
   @ProbeTarget
@@ -250,26 +350,6 @@ class UserExtensionTest {
 
     @Test
     void observe() {
-    }
-  }
-
-  @ProbeTarget
-  static final class OutcomeInvitation {
-    @Test
-    void observe(TestReporter reporter, @User(outcomeInvitations = 1) TestUser user) {
-      TestUser invitee = user.outcomeInvitations().getFirst();
-      reporter.publishEntry(Map.of(
-          "username", user.username(),
-          "invitee", invitee.username(),
-          "invitation", String.valueOf(
-              new Friendship(user.username(), invitee.username(), FriendshipStatus.PENDING).exists())));
-    }
-  }
-
-  @ProbeTarget
-  static final class NegativeOutcomeInvitations {
-    @Test
-    void observe(@User(outcomeInvitations = -1) TestUser user) {
     }
   }
 }

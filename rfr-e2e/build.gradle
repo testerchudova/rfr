@@ -72,7 +72,7 @@ def waitForStand = tasks.register('waitForStand', Exec) {
     group = 'verification'
     description = 'Waits until MySQL, rfr-auth, rfr-api and the front respond'
     workingDir = rootProject.projectDir
-    commandLine 'scripts/wait-for-stand.sh'
+    commandLine providers.gradleProperty('bashExecutable').getOrElse('bash'), 'scripts/wait-for-stand.sh'
 }
 
 tasks.register('e2e', Test) {
