@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="HW04 IDE method" type="JUnit" factoryName="JUnit">
+    <module name="rfr.rfr-e2e.test" />
+    <option name="PACKAGE_NAME" value="io.student.rangiffler.test.auth" />
+    <option name="MAIN_CLASS_NAME" value="io.student.rangiffler.test.auth.MainPageTest" />
+    <option name="METHOD_NAME" value="preparedUserCanLogin" />
+    <option name="TEST_OBJECT" value="method" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/rfr-e2e" />
+    <option name="VM_PARAMETERS" value="-Drfr.migrationCheck=true -Drfr.authMigrations=$PROJECT_DIR$/build/hw04-evidence/broken-auth-migrations -Dallure.results.directory=$PROJECT_DIR$/build/hw04-evidence/ide-allure" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

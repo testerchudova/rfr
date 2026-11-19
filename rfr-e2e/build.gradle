@@ -39,6 +39,7 @@ dependencies {
 
     testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation "org.junit.platform:junit-platform-testkit"
+    testImplementation "org.junit.platform:junit-platform-suite"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testRuntimeOnly "org.aspectj:aspectjrt:$aspectJVersion"
 }
@@ -51,6 +52,7 @@ allure {
 }
 
 tasks.withType(Test).configureEach {
+    testLogging.showStandardStreams = true
     systemProperty 'rfr.authMigrations', rootProject.file('rfr-auth/src/main/resources/db/migration/rangiffler-auth').absolutePath
     systemProperty 'rfr.apiMigrations', rootProject.file('rfr-api/src/main/resources/db/migration/rangiffler-api').absolutePath
     systemProperties System.getProperties().findAll { key, value -> key.toString().startsWith('rfr.') }
@@ -75,6 +77,8 @@ def waitForStand = tasks.register('waitForStand', Exec) {
     commandLine providers.gradleProperty('bashExecutable').getOrElse('bash'), 'scripts/wait-for-stand.sh'
 }
 
+def unrestrictedSuiteEngines = providers.gradleProperty('unrestrictedEngines').getOrElse('false').toBoolean()
+
 tasks.register('e2e', Test) {
     group = 'verification'
     description = 'Runs UI tests against a running stand'
@@ -83,6 +87,14 @@ tasks.register('e2e', Test) {
     systemProperty 'rfr.migrationCheck', 'true'
     useJUnitPlatform {
         includeTags 'ui'
+        if (!unrestrictedSuiteEngines) {
+            includeEngines 'junit-platform-suite'
+        }
+    }
+    if (!unrestrictedSuiteEngines) {
+        filter {
+            includeTestsMatching '*StandSuite'
+        }
     }
     dependsOn waitForStand
 }
