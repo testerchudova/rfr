@@ -11,10 +11,6 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 public final class StandSchemaExtension implements SuiteExtension {
   @Override
   public void beforeSuite(ExtensionContext context) {
-    verifySchema();
-  }
-
-  public static void verifySchema() {
     if (TestConfig.migrationCheck()) {
       List<String> mismatches = Stream.of(
               new Migrations(Databases.AUTH, TestConfig.authMigrations()),
