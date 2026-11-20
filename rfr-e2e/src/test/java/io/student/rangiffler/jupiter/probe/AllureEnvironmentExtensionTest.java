@@ -30,6 +30,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DisplayName("Окружение Allure")
 class AllureEnvironmentExtensionTest {
   @Test
+  @DisplayName("Окружение сохраняется после ошибки StandSchemaExtension")
+  void writesEnvironmentAfterSchemaFailure(@TempDir Path resultsDirectory) throws IOException {
+    try (ProbeStand stand = new ProbeStand(resultsDirectory, 0, false)) {
+      stand.property("rfr.standCheck", "false");
+      stand.property("rfr.migrationCheck", "true");
+      stand.property("rfr.authMigrations", resultsDirectory.resolve("missing-migrations").toString());
+      var result = run(StandReadinessExtensionTest.UiTarget.class);
+      assertEquals(0, result.testEvents().started().count());
+      assertTrue(failureContains(result, "Migrations directory"));
+      assertEquals("abc1234", readEnvironment(resultsDirectory).getProperty("commit"));
+    }
+  }
+
+  @Test
   @DisplayName("Прямой JUnit без override пишет Allure и окружение в один каталог")
   void defaultDirectoryMatchesActualAllureWriter(@TempDir Path ownedAttachments) throws IOException {
     String previous = System.getProperty("allure.results.directory");

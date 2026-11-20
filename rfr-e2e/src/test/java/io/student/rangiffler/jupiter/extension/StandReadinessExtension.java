@@ -30,24 +30,27 @@ public final class StandReadinessExtension implements SuiteExtension {
     Duration timeout = TestConfig.standTimeout();
     long deadline = System.nanoTime() + timeout.toNanos();
     ExecutorService connections = Executors.newVirtualThreadPerTaskExecutor();
-    HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1))
+    HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(1))
         .build();
-    List<String> pending = List.of();
+    String mysql = "MySQL: docker compose up -d --wait";
+    String auth = "rfr-auth: ./gradlew runAll";
+    String api = "rfr-api: ./gradlew runAll";
+    String front = "rfr-gql-client: npm --prefix rfr-gql-client run dev";
+    List<String> pending = new ArrayList<>(List.of(mysql, auth, api, front));
     List<String> lastPending = List.of();
     try {
       do {
-        pending = new ArrayList<>();
-        if (!mysql(connections, deadline)) {
-          pending.add("MySQL: docker compose up -d --wait");
+        if (pending.contains(mysql) && mysql(connections, deadline)) {
+          pending.remove(mysql);
         }
-        if (!http(client, TestConfig.authUrl() + "/.well-known/openid-configuration", false, deadline)) {
-          pending.add("rfr-auth: ./gradlew runAll");
+        if (pending.contains(auth) && http(client, TestConfig.authUrl() + "/.well-known/openid-configuration", false, deadline)) {
+          pending.remove(auth);
         }
-        if (!http(client, TestConfig.apiUrl() + "/graphql", true, deadline)) {
-          pending.add("rfr-api: ./gradlew runAll");
+        if (pending.contains(api) && http(client, TestConfig.apiUrl() + "/graphql", true, deadline)) {
+          pending.remove(api);
         }
-        if (!http(client, TestConfig.frontUrl(), false, deadline)) {
-          pending.add("rfr-gql-client: npm --prefix rfr-gql-client run dev");
+        if (pending.contains(front) && http(client, TestConfig.frontUrl(), false, deadline)) {
+          pending.remove(front);
         }
         if (pending.isEmpty()) {
           return;

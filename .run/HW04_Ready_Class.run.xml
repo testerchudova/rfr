@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="HW04 stand readiness" type="JUnit" factoryName="JUnit">
+    <module name="rfr.rfr-e2e.test" />
+    <option name="PACKAGE_NAME" value="io.student.rangiffler.test.auth" />
+    <option name="MAIN_CLASS_NAME" value="io.student.rangiffler.test.auth.MainPageTest" />
+    <option name="TEST_OBJECT" value="class" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/rfr-e2e" />
+    <option name="VM_PARAMETERS" value="-Drfr.standTimeout=10" />
+    <method v="2"><option name="Make" enabled="true" /></method>
+  </configuration>
+</component>

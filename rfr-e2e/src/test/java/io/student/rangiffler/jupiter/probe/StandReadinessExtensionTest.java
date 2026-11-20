@@ -23,6 +23,16 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass
 @DisplayName("Ожидание готовности стенда")
 class StandReadinessExtensionTest {
   @Test
+  @DisplayName("Проверка dev-сервера использует HTTP1.1 без upgrade")
+  void usesHttp11ForDevelopmentServer(@TempDir Path resultsDirectory) {
+    try (ProbeStand stand = new ProbeStand(resultsDirectory, 0, false)) {
+      stand.rejectHttp2Upgrade();
+      assertExecuted(run(UiTarget.class));
+      assertEquals(0, stand.upgradeRequests(), "Readiness must not attempt an HTTP2 upgrade");
+    }
+  }
+
+  @Test
   @DisplayName("OIDC302 подтверждает доступность без перехода по Location как curl без -L")
   void acceptsRedirectWithoutFollowingIt(@TempDir Path resultsDirectory) {
     try (ProbeStand stand = new ProbeStand(resultsDirectory, 0, false)) {
@@ -57,10 +67,10 @@ class StandReadinessExtensionTest {
   @DisplayName("Таймаут называет недоступный фронт и блокирует тело теста")
   void namesMissingServiceAndBlocksTests(@TempDir Path resultsDirectory) {
     try (ProbeStand stand = new ProbeStand(resultsDirectory, -1, false)) {
-      stand.property("rfr.standTimeout", "1");
+      stand.property("rfr.standTimeout", "3");
       EngineExecutionResults result = run(UiTarget.class);
       assertEquals(0, result.testEvents().started().count());
-      assertTrue(failureContains(result, "rfr-gql-client: npm --prefix rfr-gql-client run dev"));
+      assertTrue(failureContains(result, "Stand was not ready within 3 s: rfr-gql-client: npm --prefix rfr-gql-client run dev"));
     }
   }
 

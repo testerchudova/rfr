@@ -21,7 +21,9 @@ final class ProbeStand implements AutoCloseable {
   private final CountDownLatch releaseBody = new CountDownLatch(1);
   private final AtomicInteger requests = new AtomicInteger();
   private final AtomicInteger apiStatus = new AtomicInteger(200);
+  private final AtomicInteger upgradeRequests = new AtomicInteger();
   private final java.util.concurrent.atomic.AtomicBoolean authRedirect = new java.util.concurrent.atomic.AtomicBoolean();
+  private final java.util.concurrent.atomic.AtomicBoolean rejectUpgrade = new java.util.concurrent.atomic.AtomicBoolean();
   private final Map<String, String> original = new HashMap<>();
 
   ProbeStand(Path results, long frontDelayMillis, boolean stalledBody) {
@@ -51,8 +53,24 @@ final class ProbeStand implements AutoCloseable {
           : exchange.getRequestURI().getPath().equals("/graphql") ? apiStatus.get() : 200, -1);
       exchange.close();
     });
+    java.util.concurrent.atomic.AtomicBoolean frontReady = new java.util.concurrent.atomic.AtomicBoolean(frontDelayMillis == 0);
+    java.util.concurrent.atomic.AtomicBoolean startScheduled = new java.util.concurrent.atomic.AtomicBoolean();
     front.createContext("/", exchange -> {
       requests.incrementAndGet();
+      if (rejectUpgrade.get() && exchange.getRequestHeaders().containsKey("Upgrade")) {
+        upgradeRequests.incrementAndGet();
+        exchange.sendResponseHeaders(426, -1);
+        exchange.close();
+        return;
+      }
+      if (!frontReady.get()) {
+        if (frontDelayMillis > 0 && startScheduled.compareAndSet(false, true)) {
+          scheduler.schedule(() -> frontReady.set(true), frontDelayMillis, TimeUnit.MILLISECONDS);
+        }
+        exchange.sendResponseHeaders(503, -1);
+        exchange.close();
+        return;
+      }
       exchange.sendResponseHeaders(200, stalledBody ? 10 : -1);
       if (stalledBody) {
         try {
@@ -64,11 +82,7 @@ final class ProbeStand implements AutoCloseable {
       exchange.close();
     });
     backend.start();
-    if (frontDelayMillis == 0) {
-      front.start();
-    } else if (frontDelayMillis > 0) {
-      scheduler.schedule(front::start, frontDelayMillis, TimeUnit.MILLISECONDS);
-    }
+    front.start();
     property("rfr.dbUrl", "jdbc:mysql://127.0.0.1:" + backend.getAddress().getPort());
     property("rfr.authUrl", backendUrl());
     property("rfr.apiUrl", backendUrl());
@@ -105,6 +119,14 @@ final class ProbeStand implements AutoCloseable {
 
   void authRedirect() {
     authRedirect.set(true);
+  }
+
+  void rejectHttp2Upgrade() {
+    rejectUpgrade.set(true);
+  }
+
+  int upgradeRequests() {
+    return upgradeRequests.get();
   }
 
   @Override
