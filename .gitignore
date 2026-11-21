@@ -33,7 +33,9 @@ dist/
 Thumbs.db
 
 # Local agent notes
-AGENTS.md
+AGENTS.local.md
+*.????????-??????.bak
+.agents/skills/
 docs/*
 !docs/lessons/
 docs/lessons/*/prompts/

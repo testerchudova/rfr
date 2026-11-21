@@ -5,9 +5,11 @@ import com.microsoft.playwright.junit.UsePlaywright;
 import io.student.rangiffler.data.TestUser;
 import io.student.rangiffler.jupiter.annotation.User;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag("ui")
 @UsePlaywright
@@ -31,7 +33,24 @@ class FriendsTabTest {
   @Test
   @DisplayName("Без друзей показывает пустое состояние")
   void showsEmptyStateWithoutFriends(Page page, @User TestUser user) {
+    page.addInitScript("""
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+          if (String(args[1]?.body).includes('GetFriends')) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          return originalFetch(...args);
+        };
+        """);
+    AtomicBoolean friendsResponseReceived = new AtomicBoolean();
+    page.onResponse(response -> {
+      if (response.url().endsWith("/graphql")
+          && String.valueOf(response.request().postData()).contains("GetFriends")) {
+        friendsResponseReceived.set(true);
+      }
+    });
     PeopleLogin.open(page, user)
         .checkThatNoUsers();
+    assertTrue(friendsResponseReceived.get(), "Empty state must follow the Friends response");
   }
 }

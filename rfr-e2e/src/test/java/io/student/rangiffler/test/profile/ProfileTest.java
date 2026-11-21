@@ -18,6 +18,23 @@ import org.junit.jupiter.api.Test;
 @DisplayName("Профиль пользователя")
 class ProfileTest {
   @Test
+  @DisplayName("Save сохраняет выбранный аватар даже при медленном FileReader")
+  void avatarWaitsForAsyncReadBeforeSave(Page page, @User TestUser user) throws URISyntaxException {
+    page.addInitScript("""
+        const originalRead = FileReader.prototype.readAsDataURL;
+        FileReader.prototype.readAsDataURL = function(file) {
+          setTimeout(() => originalRead.call(this, file), 1500);
+        };
+        """);
+    Path file = Path.of(getClass().getResource("/img/avatar.png").toURI());
+    profile(page, user)
+        .uploadAvatar(file)
+        .clickSave()
+        .reload()
+        .checkThatAvatarUploaded();
+  }
+
+  @Test
   @DisplayName("Имя сохраняется и читается после перезагрузки")
   void firstNameSurvivesReload(Page page, @User TestUser user) {
     String firstName = "Имя" + random();

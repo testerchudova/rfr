@@ -1,6 +1,9 @@
 package io.student.rangiffler.config;
 
 import java.util.Locale;
+import java.nio.file.Path;
+import java.time.Duration;
+import io.qameta.allure.util.PropertiesUtils;
 
 public final class TestConfig {
   private TestConfig() {
@@ -31,7 +34,27 @@ public final class TestConfig {
   }
 
   public static boolean migrationCheck() {
-    return Boolean.parseBoolean(value("migrationCheck", "false"));
+    return Boolean.parseBoolean(value("migrationCheck", "true"));
+  }
+
+  public static boolean standCheck() {
+    return Boolean.parseBoolean(value("standCheck", "true"));
+  }
+
+  public static Duration standTimeout() {
+    long seconds = Long.parseLong(value("standTimeout", "180"));
+    if (seconds <= 0) {
+      throw new IllegalArgumentException("rfr.standTimeout must be positive");
+    }
+    return Duration.ofSeconds(seconds);
+  }
+
+  public static String commit() {
+    return value("commit", "unknown");
+  }
+
+  public static Path allureResultsDirectory() {
+    return Path.of(PropertiesUtils.loadAllureProperties().getProperty("allure.results.directory", "allure-results"));
   }
 
   public static String authMigrations() {

@@ -253,6 +253,27 @@ class SuiteExtensionTest {
         .execute();
   }
 
+  @Test
+  @DisplayName("Падение первого beforeAll блокирует регистрацию следующего suite-расширения")
+  void failedBeforeAllPreventsLaterRegistration(@TempDir Path dir) {
+    Journal journal = new Journal(dir.resolve("journal"));
+    EngineExecutionResults results = run(journal, Map.of(), BrokenBeforeThenRecording.class);
+    assertEquals(1, failures(results, "beforeSuite of BrokenBefore fails on purpose"));
+    assertEquals(0, Collections.frequency(journal.events(), "beforeSuite Recording"));
+    assertEquals(0, Collections.frequency(journal.events(), "afterSuite Recording"));
+    assertEquals(1, Collections.frequency(journal.events(), "afterSuite BrokenBefore"));
+    assertEquals(0, results.testEvents().started().count());
+  }
+
+  @ProbeTarget
+  @ExtendWith({BrokenBefore.class, Recording.class, JournalResolver.class})
+  static final class BrokenBeforeThenRecording {
+    @Test
+    void observe(Journal journal) {
+      journal.write("test must not execute");
+    }
+  }
+
   private Map<String, String> parallel() {
     return Map.of(
         "junit.jupiter.execution.parallel.enabled", "true",
