@@ -76,3 +76,22 @@ npm run dev
 
 Mock контроллеры в rfr-api будут возвращать статические данные из JSON файлов для ленты фотографий.
 Реальная работа с пользователями и странами уже реализована через базу данных.
+
+## Codex
+
+Инструкции проекта — в `AGENTS.md` корня и модулей. Общие skills находятся в `.claude/skills`; для обнаружения Codex используются ссылки, не копии:
+
+```powershell
+./scripts/setup-codex.ps1
+```
+
+В Linux/macOS:
+
+```bash
+mkdir -p .agents/skills
+for skill in .claude/skills/*; do
+  ln -s "../../$skill" ".agents/skills/$(basename "$skill")"
+done
+```
+
+PostToolUse описан в `.codex/hooks.json`: правки Java компилируются, TS/TSX проверяются TypeScript и ESLint через `scripts/agent/compile.mjs`. В `.codex/config.toml` включена поддержка hooks. Новое определение хука пользователь доверяет через `/hooks`; агент доверие не меняет. Ручной запуск `node scripts/agent/compile.mjs <путь>` проверяет обработчик, но не подтверждает автоматическое событие. Ограничения команд Codex — в `.codex/rules/project.rules`.

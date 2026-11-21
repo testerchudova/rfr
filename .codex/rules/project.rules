@@ -1,0 +1,39 @@
+prefix_rule(
+    pattern = [["git", "git.exe"], "push"],
+    decision = "forbidden",
+    justification = "Homework policy: publish manually after reviewing the PR contents",
+    match = ["git push origin hw/02-env-agent", "git.exe push"],
+    not_match = ["git status", "git log -1"],
+)
+
+prefix_rule(
+    pattern = [["git", "git.exe"], "-C", ".", "push"],
+    decision = "forbidden",
+    justification = "Homework policy: -C must not bypass the push restriction",
+    match = ["git -C . push origin hw/02-env-agent"],
+    not_match = ["git -C . status"],
+)
+
+prefix_rule(
+    pattern = [["git", "git.exe"], "rm"],
+    decision = "forbidden",
+    justification = "Move the file to a dated hidden .bak instead of deleting it",
+    match = ["git rm example.txt", "git rm --cached example.txt"],
+    not_match = ["git mv old.txt .old.20261116000000.bak"],
+)
+
+prefix_rule(
+    pattern = [["rm", "rm.exe", "unlink", "unlink.exe", "Remove-Item", "remove-item", "del", "erase", "rmdir", "rd"]],
+    decision = "forbidden",
+    justification = "Move the file to a dated hidden .bak instead of deleting it",
+    match = ["rm example.txt", "unlink example.txt", "Remove-Item example.txt"],
+    not_match = ["mv example.txt .example.20261116000000.bak"],
+)
+
+prefix_rule(
+    pattern = [["find", "find.exe"], ".", "-delete"],
+    decision = "forbidden",
+    justification = "Homework policy: find -delete must not bypass the deletion restriction",
+    match = ["find . -delete"],
+    not_match = ["find . -name README.md"],
+)

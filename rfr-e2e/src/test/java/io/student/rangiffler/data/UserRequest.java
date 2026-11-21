@@ -1,12 +1,15 @@
 package io.student.rangiffler.data;
 
-public record UserRequest(int friends, int incomeInvitations) {
+public record UserRequest(int friends, int incomeInvitations, int outcomeInvitations) {
   public UserRequest {
     if (friends < 0) {
       throw new IllegalArgumentException("Friends count must be non-negative, got " + friends);
     }
     if (incomeInvitations < 0) {
       throw new IllegalArgumentException("Income invitations count must be non-negative, got " + incomeInvitations);
+    }
+    if (outcomeInvitations < 0) {
+      throw new IllegalArgumentException("Outcome invitations count must be non-negative, got " + outcomeInvitations);
     }
   }
 
@@ -17,6 +20,9 @@ public record UserRequest(int friends, int incomeInvitations) {
     }
     if (incomeInvitations > 0) {
       fixture = new UserWithIncomeInvitationsFixture(fixture, incomeInvitations);
+    }
+    if (outcomeInvitations > 0) {
+      fixture = new UserWithOutcomeInvitationsFixture(fixture, outcomeInvitations);
     }
     return fixture;
   }
