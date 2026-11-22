@@ -35,7 +35,9 @@ export function checksFor(files) {
     }
   }
   for (const module of modules) {
-    const task = `:${module}:${module === 'rfr-e2e' ? 'compileTestJava' : 'compileJava'}`;
+    const compileTests = module === 'rfr-e2e' || files.some(file =>
+      file.startsWith(`${module}/src/test/java/`) && extname(file) === '.java');
+    const task = `:${module}:${compileTests ? 'compileTestJava' : 'compileJava'}`;
     checks.push(process.platform === 'win32'
       ? {name: task, command: process.env.ComSpec ?? 'cmd.exe', args: ['/d', '/c', 'gradlew.bat', '--no-daemon', '-q', task], cwd: root}
       : {name: task, command: './gradlew', args: ['-q', task], cwd: root});

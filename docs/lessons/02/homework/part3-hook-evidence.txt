@@ -76,3 +76,37 @@ ESLint запускается и после ошибки TypeScript — это �
 build/hw02-evidence/automatic-hook-feedback.txt
 build/hw02-evidence/hook-status.json
 Папка build исключена из Git; данный файл предназначен для PR.
+
+Замечание PR №2 — 22 ноября 2026
+Источник: https://github.com/testerchudova/rfr/pull/2#discussion_r4657736182
+
+Проблема: для Java в rfr-auth и rfr-api всегда выбиралась compileJava,
+поэтому ошибки в src/test/java не попадали в проверку обработчика.
+
+Исправлено: при изменении тестового Java-файла своего модуля выбирается
+compileTestJava. При смешанном изменении main и test задача запускается один
+раз; Gradle включает compileJava как зависимость. Для изменений только main
+остаётся compileJava. Поведение rfr-e2e сохранено.
+
+Регрессия: node --test scripts/agent/compile.test.mjs
+На исходном коде: 3 passed, 5 failed из 8.
+После исправления: 8 passed, 0 failed.
+Проверены main/test обоих бэкендов, смешанные изменения в двух порядках,
+независимый выбор задачи для разных модулей и прежний режим e2e.
+
+Реальная компиляция: в обоих модулях временно создан тестовый Java-файл
+CompileHookReviewProbe.java с ошибкой static String value = 47.
+Прямой запуск scripts/agent/compile.mjs с путями обоих файлов вернул код 2:
+
+[:rfr-auth:compileTestJava] failed
+CompileHookReviewProbe.java:4: error: incompatible types: int cannot be converted to String
+[:rfr-api:compileTestJava] failed
+CompileHookReviewProbe.java:4: error: incompatible types: int cannot be converted to String
+
+После переноса контрольных файлов в исключённую из Git папку build/review-hook
+тот же запуск обработчика завершился с кодом 0. Контрольные Java-файлы не
+включены в коммит. node --check scripts/agent/compile.mjs также успешен.
+
+Это ручной контроль обработчика, а не новое доказательство автоматического
+PostToolUse. Настройки, обёртка и доверие хука не менялись. Сырые результаты
+сохранены локально в build/review-hook рабочего checkout этой ветки.
