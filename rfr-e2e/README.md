@@ -6,12 +6,16 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 
 ```bash
 ./gradlew :rfr-e2e:installPlaywright                      # один раз: браузер Chromium
-./gradlew :rfr-e2e:test --tests '*RegistrationTest' --rerun-tasks
-./gradlew :rfr-e2e:test --tests '*MainPageTest' --rerun-tasks
+./gradlew :rfr-e2e:installPlaywrightWithDeps              # CI на Ubuntu: Chromium и системные библиотеки
+./gradlew e2e                                            # все тесты
+./gradlew :rfr-e2e:test --tests '*RegistrationTest'
+./gradlew :rfr-e2e:test --tests '*MainPageTest'
 ./gradlew :rfr-e2e:allureReport                           # rfr-e2e/build/reports/allure-report/allureReport/index.html
 ```
 
 Стенд: MySQL `:3306`, `rfr-auth :9001`, `rfr-api :8081`, фронт `:3001` (см. корневой README).
+
+`e2e` не поднимает стенд: сначала `docker compose up -d --wait --wait-timeout 180`, в другом терминале `./gradlew runAll`, в третьем — фронтенд. Тестовая задача выполняется при каждом вызове без `--rerun-tasks`; в PowerShell используйте `.\gradlew.bat`.
 
 ## Конфигурация
 
@@ -43,6 +47,14 @@ E2E-тесты Rangiffler: JUnit 6.1.3, Playwright Java 1.63 (`@UsePlaywright`),
 
 ## Агент
 
-Page Objects пишет Claude Code по skill `rfr-page-objects`; UI исследуется через Playwright MCP (`.mcp.json`).
+Проектные правила Codex — в [AGENTS.md](AGENTS.md), корневой файл направляет к инструкциям модулей. Page Objects создаются по единственному skill `.claude/skills/rfr-page-objects/SKILL.md`. Подключение skill ссылкой и Playwright MCP описано в корневом README; `.mcp.json` используется только поддерживающими его клиентами.
 
-Доказательство корректности теста - запуск gradle таски.
+Доказательство корректности сценария — фактический запуск тестов Gradle и их результаты. Проход через MCP подтверждает только исследование UI.
+
+## E2E в GitHub Actions
+
+Job `e2e` в [ci.yml](../.github/workflows/ci.yml) выполняется для изменений модулей, общих файлов Gradle, workflow и его скриптов в `scripts/ci`. MySQL запускается отдельным service-контейнером с healthcheck; Chromium и библиотеки Ubuntu устанавливает `installPlaywrightWithDeps`.
+
+После запуска `runAll` и фронтенда скрипт `node scripts/ci/wait-for-ports.mjs 9001 8081 3001` ждёт готовности всех портов до 180 секунд. Таймаут можно изменить переменной `RFR_STARTUP_TIMEOUT_SECONDS`. Затем выполняется обычная команда `./gradlew e2e` в headless-режиме.
+
+Во вкладке Summary прогона сохраняются время старта приложения и время тестов. Полную длительность job показывает GitHub Actions. Артефакт `e2e-allure-results` содержит исходные результаты Allure, а `e2e-diagnostics` — логи серверов, XML JUnit и HTML-отчёт Gradle. Оба загружаются и при падении; срок хранения — 7 дней.

@@ -1,0 +1,19 @@
+{
+  "description": "Compile changed Java and check TypeScript plus ESLint after file edits",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Write|Edit|mcp__idea__(replace_text_in_file|create_new_file)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent/compile.mjs\"",
+            "commandWindows": "powershell.exe -NoProfile -NonInteractive -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/agent/codex-hook.ps1')\"",
+            "timeout": 660,
+            "statusMessage": "Checking changed Java and frontend files"
+          }
+        ]
+      }
+    ]
+  }
+}

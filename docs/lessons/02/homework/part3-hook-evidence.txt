@@ -1,0 +1,112 @@
+ДЗ №02, часть 3 — автоматическая проверка Java, TSX и ESLint
+Дата: 2026-11-17
+Ветка: hw/02-env-agent
+
+Проверка выполнена в Codex в IntelliJ IDEA через реальное событие PostToolUse
+после apply_patch. Скрипт для этого вывода вручную не запускался.
+Агент получил текст ниже как отказ PostToolUse и удалил обе учебные ошибки.
+
+Контрольные строки:
+Java: rfr-api/src/main/java/io/student/rangiffler/RangifflerApiApplication.java:10
+    String hookProbe = 47;
+TSX: rfr-gql-client/src/App.tsx:9
+    const hookProbe: string = 47;
+
+Автоматический вывод, полученный агентом.
+Единственная замена: абсолютный путь к репозиторию заменён на <project>.
+
+[:rfr-api:compileJava] failed
+
+<project>\rfr-api\src\main\java\io\student\rangiffler\RangifflerApiApplication.java:10: error: incompatible types: int cannot be converted to String
+    String hookProbe = 47;
+                       ^
+1 error
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':rfr-api:compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  <project>\rfr-api\src\main\java\io\student\rangiffler\RangifflerApiApplication.java:10: error: incompatible types: int cannot be converted to String
+      String hookProbe = 47;
+                         ^
+  1 error
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 33s
+
+[TypeScript] failed
+
+src/App.tsx(9,11): error TS2322: Type 'number' is not assignable to type 'string'.
+src/App.tsx(9,11): error TS6133: 'hookProbe' is declared but its value is never read.
+
+[ESLint] failed
+
+<project>\rfr-gql-client\src\App.tsx
+  9:11  error  'hookProbe' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+
+Результат после исправления
+- Обе контрольные строки удалены; SHA-256 Java и TSX совпадают со значениями
+  до проверки. useCreatePhoto.ts также остался без изменений.
+- Повторный автоматический PostToolUse успешно выполнил
+  :rfr-api:compileJava, TypeScript --noEmit и ESLint для App.tsx.
+- npm --prefix rfr-gql-client run lint: код 0, включая useCreatePhoto.ts.
+- node --check scripts/agent/compile.mjs: успешно.
+- Проверены разбор apply_patch и IDEA pathInProject, выбор Java-задачи,
+  запуск TypeScript и относительный путь для ESLint.
+
+Windows
+Java-проверка запускает Gradle с --no-daemon. Для PostToolUse диагностика
+передаётся JSON-ответом с decision: "block" и reason. Это сохраняет текст
+при запуске через Windows PowerShell, который в ручной диагностике заменял
+код 2 вложенного скрипта кодом 1. При прямом запуске с путями файлов
+сохранены stderr и код 2.
+ESLint запускается и после ошибки TypeScript — это видно в выводе выше.
+
+Определение .codex/hooks.json и Windows-обёртка не изменены; сохранённое
+доверие использовано повторно. Временная запись этапов из обработчика убрана.
+Протокол JSON: https://learn.chatgpt.com/docs/hooks#posttooluse
+
+Локальные сырые результаты и актуальный статус:
+build/hw02-evidence/automatic-hook-feedback.txt
+build/hw02-evidence/hook-status.json
+Папка build исключена из Git; данный файл предназначен для PR.
+
+Замечание PR №2 — 22 ноября 2026
+Источник: https://github.com/testerchudova/rfr/pull/2#discussion_r4657736182
+
+Проблема: для Java в rfr-auth и rfr-api всегда выбиралась compileJava,
+поэтому ошибки в src/test/java не попадали в проверку обработчика.
+
+Исправлено: при изменении тестового Java-файла своего модуля выбирается
+compileTestJava. При смешанном изменении main и test задача запускается один
+раз; Gradle включает compileJava как зависимость. Для изменений только main
+остаётся compileJava. Поведение rfr-e2e сохранено.
+
+Регрессия: node --test scripts/agent/compile.test.mjs
+На исходном коде: 3 passed, 5 failed из 8.
+После исправления: 8 passed, 0 failed.
+Проверены main/test обоих бэкендов, смешанные изменения в двух порядках,
+независимый выбор задачи для разных модулей и прежний режим e2e.
+
+Реальная компиляция: в обоих модулях временно создан тестовый Java-файл
+CompileHookReviewProbe.java с ошибкой static String value = 47.
+Прямой запуск scripts/agent/compile.mjs с путями обоих файлов вернул код 2:
+
+[:rfr-auth:compileTestJava] failed
+CompileHookReviewProbe.java:4: error: incompatible types: int cannot be converted to String
+[:rfr-api:compileTestJava] failed
+CompileHookReviewProbe.java:4: error: incompatible types: int cannot be converted to String
+
+После переноса контрольных файлов в исключённую из Git папку build/review-hook
+тот же запуск обработчика завершился с кодом 0. Контрольные Java-файлы не
+включены в коммит. node --check scripts/agent/compile.mjs также успешен.
+
+Это ручной контроль обработчика, а не новое доказательство автоматического
+PostToolUse. Настройки, обёртка и доверие хука не менялись. Сырые результаты
+сохранены локально в build/review-hook рабочего checkout этой ветки.
